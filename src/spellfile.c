@@ -401,14 +401,31 @@ spell_load_file(
     /*
      * <HEADER>: <fileID>
      */
-    for (i = 0; i < VIMSPELLMAGICL; ++i)
+    for (i = 0; i < VIMSPELLMAGICL; ++i) 
 	buf[i] = getc(fd);				/* <fileID> */
+
+    if (p_verbose > 2)
+    {
+	verbose_enter();
+	smsg((char_u *)_("Read spell file magic signature:  \"%s\""), buf);
+	verbose_leave();
+    }
+
     if (STRNCMP(buf, VIMSPELLMAGIC, VIMSPELLMAGICL) != 0)
     {
 	EMSG(_("E757: This does not look like a spell file"));
 	goto endFAIL;
     }
     c = getc(fd);					/* <versionnr> */
+
+    if (p_verbose > 2)
+    {
+	verbose_enter();
+	smsg((char_u *)_("Read spell file version number:  \"%c\""), c);
+	verbose_leave();
+    }
+
+
     if (c < VIMSPELLVERSION)
     {
 	EMSG(_("E771: Old spell file, needs to be updated"));
@@ -428,8 +445,25 @@ spell_load_file(
     for (;;)
     {
 	n = getc(fd);			    /* <sectionID> or <sectionend> */
+
+	if (p_verbose > 2)
+	{
+	    verbose_enter();
+	    smsg((char_u *)_("Read byte from spell file: \"%d\""), n);
+	    verbose_leave();
+	}
+
 	if (n == SN_END)
 	    break;
+
+
+	if (p_verbose > 2)
+	{
+	    verbose_enter();
+	    smsg((char_u *)_("I shouldn't be here if previously read byte was 255 = FF"));
+	    verbose_leave();
+	}
+
 	c = getc(fd);					/* <sectionflags> */
 	len = get4c(fd);				/* <sectionlen> */
 	if (len < 0)
@@ -547,8 +581,26 @@ truncerr:
 	    goto endFAIL;
     }
 
+
+     
+    if (p_verbose > 2)
+    {
+	verbose_enter();
+	smsg((char_u *)_("After switch!"));
+	verbose_leave();
+    }
+
     /* <LWORDTREE> */
     res = spell_read_tree(fd, &lp->sl_fbyts, &lp->sl_fidxs, FALSE, 0);
+
+    
+    if (p_verbose > 2)
+    {
+	verbose_enter();
+	smsg((char_u *)_("Returned from spell_read_tree method with response status: \"%d\""), res);
+	verbose_leave();
+    }
+
     if (res != 0)
 	goto someerror;
 
@@ -1592,22 +1644,67 @@ spell_read_tree(
 
     /* The tree size was computed when writing the file, so that we can
      * allocate it as one long block. <nodecount> */
+
+
+    if (p_verbose > 2)
+    {
+	verbose_enter();
+	smsg((char_u *)_("Begin spell_read_tree method"));
+	verbose_leave();
+    }
+
+
     len = get4c(fd);
+
+    if (p_verbose > 2)
+    {
+	verbose_enter();
+	smsg((char_u *)_("Read four byte integer from spellfile: \"%d\""), len);
+	verbose_leave();
+    }
+
     if (len < 0)
 	return SP_TRUNCERROR;
     if (len > 0)
     {
+	if (p_verbose > 2)
+	{
+	    verbose_enter();
+	    smsg((char_u *)_("About to allocate byte array with size: \"%d\""), len);
+	    verbose_leave();
+	}
+
 	/* Allocate the byte array. */
 	bp = lalloc((long_u)len, TRUE);
 	if (bp == NULL)
 	    return SP_OTHERERROR;
 	*bytsp = bp;
 
+
+	long_u memory_to_allocate = (long_u)(len * sizeof(int));
+
+	if (p_verbose > 2)
+	{
+	    verbose_enter();
+	    smsg((char_u *)_("About to allocate index array with size: \"%lu\""), memory_to_allocate);
+	    verbose_leave();
+	}
+
 	/* Allocate the index array. */
 	ip = (idx_T *)lalloc_clear((long_u)(len * sizeof(int)), TRUE);
 	if (ip == NULL)
 	    return SP_OTHERERROR;
 	*idxsp = ip;
+
+	
+	if (p_verbose > 2)
+	{
+	    verbose_enter();
+	    smsg((char_u *)_("After allocations!"));
+	    verbose_leave();
+	}
+
+
 
 	/* Recursively read the tree and store it in the array. */
 	idx = read_tree_node(fd, bp, ip, len, 0, prefixtree, prefixcnt);
